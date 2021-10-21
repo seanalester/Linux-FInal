@@ -1,0 +1,62 @@
+#!/bin/bash
+yum install httpd -y
+echo "we installed the httpd"
+echo "and then we needed to restart"
+systemctl restart httpd
+firewall-cmd --permanent --add-port 80/tcp --permanent
+firewall-cmd --permanent --add-port 443/tcp --permanent
+echo "we needed to reload the firewall after adding the ports"
+firewall-cmd --reload
+yum install php php-mysql -y
+echo "after installing mysql we needed to restart"
+systemctl restart httpd.service
+yum info-php-fpm
+yum install phpfpm -y
+cd /var/www/html
+cat > info.php <<- EOF
+<?php phpinfo(); ?>
+EOF
+yum install mariadb-server mariadb -y
+echo "start the mariadb after install"
+systemctl start mariadb
+mysql_secure_installation <<EOF
+
+y
+123
+123
+y
+y
+y
+y
+EOF
+
+psswd=123
+
+systemctl enable mariadb 
+mysqladmin -u root -p$psswd version
+echo "CREATE DATABASE wordpress; 
+CREATE USER wordpressuser@localhost IDENTIFIED by 'root'; GRANT ALL PRIVILEGES ON wordpress.* TO wordpressuser@localhost IDENTIFIED by '123'; FLUSH PRIVILEGES; "| mysql -u root -p$psswd
+yum install wget -y
+yum install tar -y
+yum install php-gd -y
+yum install rsync -y
+echo "restart after installing the following codes"
+systemctl restart httpd 
+wget http://wordpress.org/latest.tar.gz
+tar xzvf latest.tar.gz
+echo "make sure to install rsync"
+rsync -avP wordpress/ /var/www/html/
+cd /var/www/html/
+mkdir /var/www/html/wp-content/uploads
+chown -R apache:apache /var/www/html/*
+cp wp-config-sample.php wp-config.php
+cd /var/www/html/
+sed -i 's/database_name_here/wordpress/g' wp-config.php
+sed -i 's/username_here/wordpressuser/g' wp-config.php
+sed -i 's/password_here/123/g' wp-config.php
+yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+yum install -y yum-utils
+yum-config-manager --enable remi-php56 
+yum install -y php php-mcrypt php-cli php-gd php-curl php-mysql php-ldap php-zip php-fileinfo
+systemctl restart httpd
+
